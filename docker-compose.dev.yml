@@ -1,0 +1,55 @@
+# =============================================================================
+# docker-compose.dev.yml — development overrides
+#
+# Runs the app against H2 in-memory database (no external DB needed).
+# Source code is NOT copied into the image for dev; the JAR built by Maven
+# locally is bind-mounted so you can iterate without rebuilding the image.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Optional dev-tools (Adminer DB browser):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml \
+#     --profile dev-tools up --build
+# =============================================================================
+
+version: "3.9"
+
+services:
+
+  customer-service:
+    build:
+      target: prod        # still uses the prod stage — H2 is on the classpath
+    image: slavaro/customer-service:dev
+    environment:
+      # Activate H2 in-memory datasource (matches application.properties defaults)
+      SPRING_DATASOURCE_URL: "jdbc:h2:mem:customerdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: "org.h2.Driver"
+      SPRING_DATASOURCE_USERNAME: "sa"
+      SPRING_DATASOURCE_PASSWORD: ""
+      SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.H2Dialect"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "create-drop"
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_H2_CONSOLE_ENABLED: "true"
+      # Log level — verbose for local development
+      LOGGING_LEVEL_COM_COMPANY_CUSTOMERSERVICE: "DEBUG"
+      LOGGING_LEVEL_ORG_HIBERNATE_SQL: "DEBUG"
+    ports:
+      - "8080:8080"
+      # H2 console is accessible at http://localhost:8080/h2-console
+    # No restart policy in dev — let it fail fast so you notice problems.
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # adminer — lightweight DB browser (optional, activate with --profile dev-tools)
+  # Access at http://localhost:8081
+  # ---------------------------------------------------------------------------
+  adminer:
+    image: adminer:4.8.1
+    profiles:
+      - dev-tools
+    ports:
+      - "8081:8080"
+    networks:
+      - customer-net
+    restart: "no"

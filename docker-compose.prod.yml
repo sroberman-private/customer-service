@@ -1,0 +1,92 @@
+# =============================================================================
+# docker-compose.prod.yml — production overrides
+#
+# Runs the app against PostgreSQL. All sensitive values must be provided via
+# a .env file (never committed) or Docker secrets / your orchestrator.
+#
+# Required environment variables (set in .env or your CI/CD secrets):
+#   DB_URL        — e.g. jdbc:postgresql://postgres:5432/customerdb
+#   DB_USERNAME   — PostgreSQL user
+#   DB_PASSWORD   — PostgreSQL password
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Build and tag both version and latest before deploying:
+#   docker build --target prod -t slavaro/customer-service:1.0.0 .
+#   docker tag slavaro/customer-service:1.0.0 slavaro/customer-service:latest
+#   docker push slavaro/customer-service:1.0.0
+#   docker push slavaro/customer-service:latest
+# =============================================================================
+
+version: "3.9"
+
+services:
+
+  customer-service:
+    build:
+      target: prod
+    image: slavaro/customer-service:1.0.0
+    environment:
+      # PostgreSQL datasource — values come from .env or host environment.
+      # NEVER hardcode credentials here.
+      SPRING_DATASOURCE_URL: "${DB_URL}"
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: "org.postgresql.Driver"
+      SPRING_DATASOURCE_USERNAME: "${DB_USERNAME}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASSWORD}"
+      SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.PostgreSQLDialect"
+      # 'validate' ensures Hibernate never alters the schema in prod.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
+      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_H2_CONSOLE_ENABLED: "false"
+      # Log level — errors and warnings only in production
+      LOGGING_LEVEL_ROOT: "WARN"
+      LOGGING_LEVEL_COM_COMPANY_CUSTOMERSERVICE: "INFO"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health 2>/dev/null | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # postgres — production PostgreSQL instance
+  # Data is persisted in the named volume 'postgres-data'.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: customerdb
+      POSTGRES_USER: "${DB_USERNAME}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD}"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - customer-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d customerdb"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M

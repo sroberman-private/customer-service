@@ -1,0 +1,36 @@
+# =============================================================================
+# docker-compose.yml — base configuration (shared by all environments)
+#
+# Usage:
+#   Dev:   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#   Prod:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# =============================================================================
+
+version: "3.9"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # customer-service — the Spring Boot application
+  # Environment-specific settings (build target, env vars, volumes) are
+  # provided by the dev/prod override files.
+  # ---------------------------------------------------------------------------
+  customer-service:
+    image: slavaro/customer-service:1.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - customer-net
+    # Override-specific env vars, resource limits, and restart policies
+    # are defined in docker-compose.dev.yml and docker-compose.prod.yml.
+
+networks:
+  customer-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local

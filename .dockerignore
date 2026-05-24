@@ -1,0 +1,45 @@
+# Build output — always exclude; the builder stage produces its own JAR
+target/
+
+# Version-control metadata
+.git/
+.gitignore
+.gitattributes
+
+# IDE / editor artefacts
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in the image)
+*.md
+*.txt
+docs/
+
+# Docker files themselves (no need to copy into the image)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Environment files — NEVER bake secrets into the image
+.env
+.env.*
+!.env.example
+
+# Test reports and coverage
+**/test-results/
+**/surefire-reports/
+coverage/
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.bak
