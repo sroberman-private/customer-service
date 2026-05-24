@@ -57,8 +57,8 @@ USER appuser
 # Expose the port Spring Boot listens on.
 EXPOSE 8080
 
-# Health check — Spring Boot's /actuator/health endpoint (if actuator is on classpath).
-# Falls back gracefully if actuator is not present.
+# Health check — Spring Boot Actuator /actuator/health endpoint.
+# Actuator (spring-boot-starter-actuator) must be on the classpath (it is, see pom.xml).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD wget -qO- http://localhost:8080/actuator/health 2>/dev/null | grep -q '"status":"UP"' || exit 1
 
